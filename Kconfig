@@ -1,0 +1,25 @@
+mainmenu "MYAPP"
+source "Kconfig.zephyr"
+
+if HAS_STM32CUBE
+config USE_STM32_HAL_CCB
+	bool
+	help
+	  Enable STM32Cube CCB Module
+
+
+endif # HAS_STM32CUBE
+
+menuconfig MAKE_CRYPTO_WORK_STM32
+	bool "STM32 Cryptographic Accelerator driver"
+	default y
+  select HAS_STM32CUBE
+  select HAS_STM32LIB
+	select USE_STM32_HAL_CRYP
+	select USE_STM32_HAL_CRYP_EX
+	select USE_STM32_HAL_CCB
+  select USE_STM32_HAL_RNG
+  select USE_STM32_HAL_RNG_EX
+	select RESET
+	help
+	  Enable STM32 HAL-based Cryptographic Accelerator driver.
