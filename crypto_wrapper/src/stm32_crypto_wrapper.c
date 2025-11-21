@@ -24,7 +24,10 @@
 #include "stm32_crypto_wrapper.h"
 #include "psa/crypto.h"
 #include "kwe_psa_driver_interface.h"
-
+#include <zephyr/kernel.h>
+#include <zephyr/sys/printk.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(crypto, LOG_LEVEL_DBG);
 /* Global variables ----------------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
 typedef enum
@@ -134,18 +137,20 @@ int crypto_main(void)
   /* Define key attributes */
   psa_key_attributes_t key_attributes;
   psa_key_handle_t key_handle_aes_cbc;
-  volatile uint32_t start_time, end_time, time_for_encrypt;
+  volatile int64_t start_time, end_time, time_for_encrypt;
 
   /* --------------------------------------------------------------------------
    *                    PSA Crypto library Initialization
    * --------------------------------------------------------------------------
    */
+  
   retval = psa_crypto_init();
   if (retval != PSA_SUCCESS)
   {
     Error_Handler();
   }
-
+  LOG_INF("PSA Crypto Initialized");
+  k_sleep(K_MSEC(1000));
   /* --------------------------------------------------------------------------
    *                   STM32 Key Wrap Engine
    * --------------------------------------------------------------------------
@@ -160,31 +165,40 @@ int crypto_main(void)
 
   /* Init the key attributes */
   key_attributes = psa_key_attributes_init();
-
+  
+  LOG_INF("KEY ATTRIB INIT DONE"); k_sleep(K_MSEC(1000));
   /* Setup the key policy for the private key */
   psa_set_key_usage_flags(&key_attributes, PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT);
+  LOG_INF("psa_set_key_usage_flags"); k_sleep(K_MSEC(1000));
   psa_set_key_algorithm(&key_attributes, PSA_ALG_CBC_NO_PADDING);
+  LOG_INF("psa_set_key_algorithm"); k_sleep(K_MSEC(1000));
   psa_set_key_type(&key_attributes, PSA_KEY_TYPE_AES);
+  LOG_INF("psa_set_key_type"); k_sleep(K_MSEC(1000));
   psa_set_key_bits(&key_attributes, 8U*sizeof(Aes_CBC_Key));
+  LOG_INF("psa_set_key_bits"); k_sleep(K_MSEC(1000));
   /* Set up the key location using PSA_CRYPTO_KWE_DRIVER_LOCATION to wrap the private key using STM32 Key Wrap Engine (KWE) */
   psa_set_key_lifetime(&key_attributes, PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(PSA_KEY_PERSISTENCE_DEFAULT, PSA_CRYPTO_KWE_DRIVER_LOCATION));
+  LOG_INF("psa_set_key_lifetime"); k_sleep(K_MSEC(1000));
   /* Set up persistent Key ID */
   psa_set_key_id(&key_attributes, PSA_AES_CBC_KEY_ID_USER);
+  LOG_INF("psa_set_key_id"); k_sleep(K_MSEC(1000));
   /* Import the private key */
   retval = psa_import_key(&key_attributes, Aes_CBC_Key, sizeof(Aes_CBC_Key), &key_handle_aes_cbc);
   if (retval != PSA_SUCCESS)
   {
+    LOG_INF("PSA IMPORT KEY FAILED %d", retval);
     Error_Handler();
   }
 
   /* Reset the key attribute */
   psa_reset_key_attributes(&key_attributes);
+  LOG_INF("PSA IMPORT KEY DONE"); k_sleep(K_MSEC(1000));
 
   /* --------------------------------------------------------------------------
    * SINGLE CALL USAGE
    * --------------------------------------------------------------------------
   */
-  start_time = HAL_GetTick();
+  start_time = k_uptime_get();
   /* Compute directly the ciphertext passing all the needed parameters */
   /* This function use a random IV, data verification is not possible */
   retval = psa_cipher_encrypt(key_handle_aes_cbc,                      /* The key id */
@@ -197,16 +211,19 @@ int crypto_main(void)
   /* Verify API returned value */
   if (retval != PSA_SUCCESS)
   {
+    LOG_INF("psa_cipher_encrypt FAILED");
     Error_Handler();
   }
 
   /* Verify generated data size is the expected one. We can only verify the size of the data.*/
   if (computed_size != sizeof(IV_And_Expected_Ciphertext_CBC))
   {
+    LOG_INF("omputed_size != sizeof(IV_And_Expected_Ciphertext_CBC FAILED");
     Error_Handler();
   }
-  end_time = HAL_GetTick();
+  end_time = k_uptime_get();
   time_for_encrypt = end_time - start_time;
+  LOG_INF("Time for AES-CBC Encryption (ms): %lld", time_for_encrypt);
 
   /* Decrypt directly ciphertext passing all the needed parameters   */
   retval= psa_cipher_decrypt(key_handle_aes_cbc,                      /* The key id */
@@ -220,18 +237,21 @@ int crypto_main(void)
   /* Verify API returned value */
   if (retval != PSA_SUCCESS)
   {
+    LOG_INF("psa_cipher_decrypt FAILED");
     Error_Handler();
   }
 
   /* Verify generated data size is the expected one */
   if (computed_size != sizeof(Plaintext_CBC))
   {
+    LOG_INF("computed_size != sizeof(Plaintext_CBC) FAILED");
     Error_Handler();
   }
 
   /* Verify generated data are the expected ones */
   if (memcmp(Plaintext_CBC, Computed_Plaintext_CBC, computed_size) != 0)
   {
+    LOG_INF("memcmp(Plaintext_CBC, Computed_Plaintext_CBC, computed_size) != 0 FAILED");
     Error_Handler();
   }
 
@@ -326,7 +346,12 @@ static void SystemClock_Config(void)
   */
 void Error_Handler(void)
 {
-
+  LOG_ERR("Error Handler Invoked");
+  /* User may add here some code to deal with this error */
+  while(1)
+  {
+    k_sleep(K_MSEC(1000));
+  }
 }
 
 #ifdef USE_FULL_ASSERT

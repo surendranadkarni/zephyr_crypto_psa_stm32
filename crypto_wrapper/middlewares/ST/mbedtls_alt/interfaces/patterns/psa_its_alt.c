@@ -18,6 +18,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "psa_crypto_storage.h"
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(psa_its_alt, LOG_LEVEL_DBG);
 #if defined(PSA_USE_ITS_ALT)
 #include "psa_its_alt.h"
 
@@ -314,7 +316,7 @@ psa_status_t psa_its_get(psa_storage_uid_t uid,
   {
     return PSA_ERROR_INVALID_HANDLE;
   }
-
+  
   /* Get data ID size and validity  */
   status = psa_its_get_info(uid, &info);
   if (status != PSA_SUCCESS)
