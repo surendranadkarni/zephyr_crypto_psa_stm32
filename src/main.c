@@ -15,7 +15,7 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/printk.h>
 #include <inttypes.h>
-#include "stm32_crypto_wrapper.h"
+#include <stm32_crypto_wrapper.h>
 
 #define SLEEP_TIME_MS	1
 
@@ -89,7 +89,7 @@ int main(void)
 	}
 
 	printk("Press the button\n");
-	amina_crypto_init();
+	crypto_main();
 	if (led.port) {
 		while (1) {
 			/* If we have an LED, match its state to the button's. */
