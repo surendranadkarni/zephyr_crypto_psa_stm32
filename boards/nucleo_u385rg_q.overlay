@@ -1,0 +1,35 @@
+/*
+ * Copyright (c) 2025 STMicroelectronics
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Overlay file for nucleo_u385rg_q board with custom flash partition layout:
+ * - settings partition: 50KB
+ * - file system partition: 50KB
+ * - storage partition: 100KB
+ */
+
+&flash0 {
+	partitions {
+
+		/*
+		 * File system partition: 48KB after settings
+		 * storage ends at 0x00080000 
+		 */
+		file_system_partition: partition@80000 {
+			label = "file_system_partition";
+			reg = <0x00080000 DT_SIZE_K(48)>;
+		};
+
+		/*
+		 * Audit partition: 100KB after file system
+		 * file_system ends at 0x0008C000 (548KB)
+		 */
+		audit_partition: partition@8C000 {
+			label = "audit_partition";
+			reg = <0x0008C000 DT_SIZE_K(100)>;
+		};
+	};
+};
+
+

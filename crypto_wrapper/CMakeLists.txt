@@ -9,5 +9,5 @@
   target_sources(app PRIVATE
     src/stm32_crypto_wrapper.c  
     src/stm32u3xx_hal_msp.c     
-    src/storage_interface.c     
+    src/storage_interface_zfs.c     
   )

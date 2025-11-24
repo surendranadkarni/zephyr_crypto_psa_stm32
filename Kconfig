@@ -1,6 +1,10 @@
 mainmenu "MYAPP"
 source "Kconfig.zephyr"
 
+config TOTAL_KEYS_REQUIRED
+	int "Total numbers of keys"
+	default 4
+
 if HAS_STM32CUBE
 config USE_STM32_HAL_CCB
 	bool

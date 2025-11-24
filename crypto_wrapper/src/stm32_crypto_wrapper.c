@@ -125,6 +125,16 @@ static void SystemClock_Config(void);
 void Error_Handler(void);
 /* Functions Definition ------------------------------------------------------*/
 
+static psa_status_t check_key_existence(psa_key_id_t key_id, psa_key_attributes_t *attributes) {
+    psa_status_t status = psa_get_key_attributes(key_id, attributes);
+    if (status != PSA_SUCCESS) {
+        LOG_ERR("psa_get_key_attributes failed, status=%d", status);
+        return status;
+    }
+
+    return status;
+}
+
 /**
   * @brief  Main program
   * @param  None
@@ -165,35 +175,38 @@ int crypto_main(void)
 
   /* Init the key attributes */
   key_attributes = psa_key_attributes_init();
-  
-  LOG_INF("KEY ATTRIB INIT DONE"); k_sleep(K_MSEC(1000));
-  /* Setup the key policy for the private key */
-  psa_set_key_usage_flags(&key_attributes, PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT);
-  LOG_INF("psa_set_key_usage_flags"); k_sleep(K_MSEC(1000));
-  psa_set_key_algorithm(&key_attributes, PSA_ALG_CBC_NO_PADDING);
-  LOG_INF("psa_set_key_algorithm"); k_sleep(K_MSEC(1000));
-  psa_set_key_type(&key_attributes, PSA_KEY_TYPE_AES);
-  LOG_INF("psa_set_key_type"); k_sleep(K_MSEC(1000));
-  psa_set_key_bits(&key_attributes, 8U*sizeof(Aes_CBC_Key));
-  LOG_INF("psa_set_key_bits"); k_sleep(K_MSEC(1000));
-  /* Set up the key location using PSA_CRYPTO_KWE_DRIVER_LOCATION to wrap the private key using STM32 Key Wrap Engine (KWE) */
-  psa_set_key_lifetime(&key_attributes, PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(PSA_KEY_PERSISTENCE_DEFAULT, PSA_CRYPTO_KWE_DRIVER_LOCATION));
-  LOG_INF("psa_set_key_lifetime"); k_sleep(K_MSEC(1000));
-  /* Set up persistent Key ID */
-  psa_set_key_id(&key_attributes, PSA_AES_CBC_KEY_ID_USER);
-  LOG_INF("psa_set_key_id"); k_sleep(K_MSEC(1000));
-  /* Import the private key */
-  retval = psa_import_key(&key_attributes, Aes_CBC_Key, sizeof(Aes_CBC_Key), &key_handle_aes_cbc);
-  if (retval != PSA_SUCCESS)
-  {
-    LOG_INF("PSA IMPORT KEY FAILED %d", retval);
-    Error_Handler();
+
+  retval = check_key_existence(PSA_AES_CBC_KEY_ID_USER, &key_attributes);
+  if (retval != PSA_SUCCESS) {
+    LOG_INF("Key does not exist, creating new key");
+    /* Setup the key policy for the private key */
+    psa_set_key_usage_flags(&key_attributes, PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT);
+    psa_set_key_algorithm(&key_attributes, PSA_ALG_CBC_NO_PADDING);
+    psa_set_key_type(&key_attributes, PSA_KEY_TYPE_AES);
+    psa_set_key_bits(&key_attributes, 8U*sizeof(Aes_CBC_Key));
+    /* Set up the key location using PSA_CRYPTO_KWE_DRIVER_LOCATION to wrap the private key using STM32 Key Wrap Engine (KWE) */
+    psa_set_key_lifetime(&key_attributes, PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(PSA_KEY_PERSISTENCE_DEFAULT, PSA_CRYPTO_KWE_DRIVER_LOCATION));
+    /* Set up persistent Key ID */
+    psa_set_key_id(&key_attributes, PSA_AES_CBC_KEY_ID_USER);
+    /* Import the private key */
+
+    retval = psa_import_key(&key_attributes, Aes_CBC_Key, sizeof(Aes_CBC_Key), &key_handle_aes_cbc);
+    if (retval != PSA_SUCCESS)
+    {
+      LOG_INF("PSA IMPORT KEY FAILED %d", retval);
+      Error_Handler();
+    }
+
+
+    LOG_INF("PSA IMPORT KEY DONE with key handle %x", key_handle_aes_cbc); k_sleep(K_MSEC(1000));
+  } else {
+    LOG_INF("Key already exists, using existing key");
+    key_handle_aes_cbc = PSA_AES_CBC_KEY_ID_USER;
+    
   }
 
-  /* Reset the key attribute */
-  psa_reset_key_attributes(&key_attributes);
-  LOG_INF("PSA IMPORT KEY DONE"); k_sleep(K_MSEC(1000));
-
+    /* Reset the key attribute */
+    psa_reset_key_attributes(&key_attributes);
   /* --------------------------------------------------------------------------
    * SINGLE CALL USAGE
    * --------------------------------------------------------------------------
@@ -259,14 +272,19 @@ int crypto_main(void)
    * Destroy the PSA key and clear all data
    * --------------------------------------------------------------------------
   */
-
-  /* Destroy the private key */
-  retval = psa_destroy_key(key_handle_aes_cbc);
-  if (retval != PSA_SUCCESS)
+  if(0)
   {
-    Error_Handler();
+    /* Destroy the private key */
+    retval = psa_destroy_key(key_handle_aes_cbc);
+    if (retval != PSA_SUCCESS)
+    {
+      Error_Handler();
+    }
   }
-
+  else
+  {
+    LOG_INF("Key not destroyed");
+  }
   /* Clear all data associated with the PSA layer */
   mbedtls_psa_crypto_free();
 

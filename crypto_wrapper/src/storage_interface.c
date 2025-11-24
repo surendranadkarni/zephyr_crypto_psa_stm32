@@ -157,7 +157,7 @@ psa_status_t storage_get_info(uint64_t obj_uid,
     uint32_t stored_size = storage_table[idx].size;
     uint8_t *data_ptr = storage_table[idx].data;
     LOG_INF("storage_get_info: uid 0x%llx size %u data_ptr %p",
-            obj_uid, stored_size, data_ptr);
+            obj_uid, stored_size, (void*)data_ptr);
     /* Minimal info support: if buffer is at least 4 bytes, return stored size as uint32_t */
     if (p_obj_info == NULL || obj_info_size > stored_size) {
         LOG_ERR("storage_get_info: invalid p_obj_info or size %u", obj_info_size);
